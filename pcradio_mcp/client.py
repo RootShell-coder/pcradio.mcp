@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-from .normalize import normalize_playlist, normalize_state
+from .normalize import normalize_playlist, normalize_state, normalize_user_playlist
 
 
 class PCRadioClient:
@@ -44,6 +44,11 @@ class PCRadioClient:
 
     async def playlist(self) -> dict[str, Any]:
         return normalize_playlist(await self._request("GET", "/api/playlist"))
+
+    async def user_playlist(self) -> dict[str, Any]:
+        return normalize_user_playlist(
+            await self._request("GET", "/api/user-playlist")
+        )
 
     async def play(self, channel: int) -> dict[str, Any]:
         if channel < 1:

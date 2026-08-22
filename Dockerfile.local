@@ -1,0 +1,3 @@
+FROM ghcr.io/rootshell-coder/pcradio-mcp:latest
+
+COPY --chown=appuser:appuser pcradio_mcp /app/pcradio_mcp

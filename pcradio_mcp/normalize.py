@@ -77,3 +77,20 @@ def normalize_playlist(payload: dict[str, Any]) -> dict[str, Any]:
     ]
     return {"stations": items, "total": len(items)}
 
+def normalize_user_playlist(payload: dict[str, Any]) -> dict[str, Any]:
+    stations = payload.get("stations", [])
+    items = [
+        {
+            "id": item.get("id"),
+            "number": item.get("user_number"),
+            "name": item.get("name"),
+            "favorite": item.get("favorite"),
+            "available": item.get("availability_confirmed"),
+            "in_main_playlist": item.get("in_main"),
+            "main_channel": item.get("main_channel"),
+            "play_count": item.get("play_count"),
+        }
+        for item in stations if isinstance(item, dict)
+    ]
+    total = payload.get("count")
+    return {"stations": items, "total": total if isinstance(total, int) else len(items)}

@@ -29,6 +29,12 @@ async def get_pcradio_playlist() -> dict:
 
 
 @mcp.tool()
+async def get_pcradio_user_playlist() -> dict:
+    """List user-added PCRadio stations without exposing stream URLs."""
+    return await client.user_playlist()
+
+
+@mcp.tool()
 async def play_pcradio(channel: int) -> dict:
     """Start a main-playlist station by its one-based channel number."""
     return await client.play(channel)

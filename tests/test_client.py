@@ -97,3 +97,37 @@ async def test_http_error_is_propagated(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: FakeAsyncClient())
     with pytest.raises(httpx.HTTPStatusError):
         await PCRadioClient("http://radio").playlist()
+
+@pytest.mark.asyncio
+async def test_user_playlist_is_normalized_without_stream_urls(monkeypatch):
+    async def fake_request(self, method, path, *, json=None, content=None):
+        assert (method, path) == ("GET", "/api/user-playlist")
+        return {
+            "count": 1,
+            "stations": [{
+                "id": "user-1",
+                "user_number": 7,
+                "name": "My Radio",
+                "url": "https://secret.example/stream",
+                "favorite": True,
+                "availability_confirmed": True,
+                "in_main": False,
+                "main_channel": None,
+                "play_count": 3,
+            }],
+        }
+
+    monkeypatch.setattr(PCRadioClient, "_request", fake_request)
+    result = await PCRadioClient("http://radio").user_playlist()
+
+    assert result["total"] == 1
+    assert result["stations"] == [{
+        "id": "user-1",
+        "number": 7,
+        "name": "My Radio",
+        "favorite": True,
+        "available": True,
+        "in_main_playlist": False,
+        "main_channel": None,
+        "play_count": 3,
+    }]
