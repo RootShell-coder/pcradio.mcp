@@ -74,3 +74,16 @@ def test_alarm_ranges(field, value):
     values[field] = value
     with pytest.raises(ValueError, match=field):
         _alarm_payload(**values)
+
+
+@pytest.mark.parametrize("date,weekdays,message", [
+    ("", 0, "exactly one schedule"),
+    ("2026-08-23", 1, "exactly one schedule"),
+    ("2026-02-30", 0, "valid YYYY-MM-DD"),
+    ("20260823", 0, "valid YYYY-MM-DD"),
+])
+def test_alarm_schedule_validation(date, weekdays, message):
+    with pytest.raises(ValueError, match=message):
+        _alarm_payload(
+            0, "A", date, "station", 1, 2, weekdays, 3, 4, True,
+        )

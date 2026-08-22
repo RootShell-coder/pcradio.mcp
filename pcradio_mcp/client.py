@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -88,8 +89,28 @@ class PCRadioClient:
         values = await asyncio.gather(*(self._request("GET", path) for path in paths.values()))
         return normalize_state(dict(zip(paths, values, strict=True)))
 
-    async def playlist(self) -> dict[str, Any]:
-        return normalize_playlist(await self._request("GET", "/api/playlist"))
+    async def playlist(
+        self, query: str | None = None, offset: int = 0, limit: int = 100,
+    ) -> dict[str, Any]:
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+        if not 1 <= limit <= 500:
+            raise ValueError("limit must be between 1 and 500")
+        result = normalize_playlist(await self._request("GET", "/api/playlist"))
+        stations = result["stations"]
+        if query is not None and query.strip():
+            needle = query.strip().casefold()
+            stations = [
+                station for station in stations
+                if needle in str(station.get("name") or "").casefold()
+            ]
+        total = len(stations)
+        return {
+            "stations": stations[offset:offset + limit],
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }
 
     async def user_playlist(self) -> dict[str, Any]:
         return normalize_user_playlist(
@@ -182,6 +203,9 @@ class PCRadioClient:
             "POST", "/api/ui/preferences", json={"collapsed_groups": collapsed_groups},
         )
 
+    async def ui_preferences(self) -> dict[str, Any]:
+        return await self._request("GET", "/api/ui/preferences")
+
     async def set_time_config(self, servers: list[str], timezone: str) -> dict[str, Any]:
         if not servers or any(not item.strip() for item in servers):
             raise ValueError("servers must contain at least one non-empty NTP server")
@@ -191,6 +215,9 @@ class PCRadioClient:
             "POST", "/api/time/config", json={"servers": servers, "timezone": timezone},
         )
 
+    async def time_config(self) -> dict[str, Any]:
+        return await self._request("GET", "/api/time/config")
+
     async def save_alarm(self, alarm: dict[str, Any], *, update: bool) -> dict[str, Any]:
         return await self._request("PUT" if update else "POST", "/api/alarms", json=alarm)
 
@@ -199,3 +226,12 @@ class PCRadioClient:
         if not isinstance(alarm["revision"], int):
             raise ValueError("PCRadio alarm list did not return an integer revision")
         return await self.save_alarm(alarm, update=False)
+
+    async def delete_user_station(self, station_id: str) -> dict[str, Any]:
+        return await self._request(
+            "DELETE", "/api/user-playlist", json={"id": station_id},
+        )
+
+    async def delete_alarm(self, alarm_id: str, revision: int) -> dict[str, Any]:
+        path = f"/api/alarms?id={quote(alarm_id, safe='')}&revision={revision}"
+        return await self._request("DELETE", path)

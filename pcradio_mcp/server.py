@@ -25,9 +25,11 @@ async def get_pcradio_state() -> dict:
 
 
 @mcp.tool()
-async def get_pcradio_playlist() -> dict:
-    """List the stations in the main PCRadio playlist."""
-    return await client.playlist()
+async def get_pcradio_playlist(
+    query: str | None = None, offset: int = 0, limit: int = 100,
+) -> dict:
+    """Search and page the main playlist; limit must be between 1 and 500."""
+    return await client.playlist(query=query, offset=offset, limit=limit)
 
 
 @mcp.tool()

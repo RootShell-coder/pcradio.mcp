@@ -158,7 +158,11 @@ async def test_all_remaining_successful_client_operations(monkeypatch):
         "station-1", name="New", favorite=True, play_count=7,
     )
     await client.set_ui_preferences(["time"])
+    await client.ui_preferences()
+    await client.time_config()
     await client.save_alarm({"id": "alarm-1"}, update=True)
+    await client.delete_user_station("station-1")
+    await client.delete_alarm("alarm/1", 3)
     assert calls == [
         ("GET", "/api/alarms?page=1&page_size=100", None, None),
         ("POST", "/api/playlist/reload", {}, None),
@@ -168,7 +172,11 @@ async def test_all_remaining_successful_client_operations(monkeypatch):
             "play_count": 7,
         }, None),
         ("POST", "/api/ui/preferences", {"collapsed_groups": ["time"]}, None),
+        ("GET", "/api/ui/preferences", None, None),
+        ("GET", "/api/time/config", None, None),
         ("PUT", "/api/alarms", {"id": "alarm-1"}, None),
+        ("DELETE", "/api/user-playlist", {"id": "station-1"}, None),
+        ("DELETE", "/api/alarms?id=alarm%2F1&revision=3", None, None),
     ]
 
 
@@ -193,6 +201,39 @@ async def test_all_remaining_successful_client_operations(monkeypatch):
 async def test_client_validation_errors(operation, message):
     with pytest.raises(ValueError, match=message):
         await operation(PCRadioClient("http://radio"))
+
+
+@pytest.mark.asyncio
+async def test_playlist_search_and_pagination(monkeypatch):
+    async def fake_request(self, method, path, *, json=None, content=None):
+        return {"stations": [
+            {"id": "1", "name": "Relax FM"},
+            {"id": "2", "name": "Rock FM"},
+            {"id": "3", "name": None},
+        ]}
+
+    monkeypatch.setattr(PCRadioClient, "_request", fake_request)
+    client = PCRadioClient("http://radio")
+    result = await client.playlist(query=" relax ", offset=0, limit=1)
+    assert result == {
+        "stations": [{
+            "id": "1", "number": None, "name": "Relax FM",
+            "favorite": None, "available": None,
+        }],
+        "total": 1, "offset": 0, "limit": 1,
+    }
+    assert (await client.playlist(query=" ", offset=1, limit=2))["total"] == 3
+    assert (await client.playlist())["total"] == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("arguments,message", [
+    ({"offset": -1}, "non-negative"),
+    ({"limit": 0}, "between 1 and 500"),
+])
+async def test_playlist_pagination_validation(arguments, message):
+    with pytest.raises(ValueError, match=message):
+        await PCRadioClient("http://radio").playlist(**arguments)
 
 
 @pytest.mark.asyncio

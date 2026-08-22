@@ -1,3 +1,4 @@
+from datetime import date as calendar_date
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -109,6 +110,19 @@ def _alarm_payload(
     for name, (value, minimum, maximum) in ranges.items():
         if not minimum <= value <= maximum:
             raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    one_time = bool(date)
+    recurring = weekdays != 0
+    if one_time == recurring:
+        raise ValueError(
+            "provide exactly one schedule: date or non-zero weekdays",
+        )
+    if one_time:
+        try:
+            parsed_date = calendar_date.fromisoformat(date)
+        except ValueError as error:
+            raise ValueError("date must use a valid YYYY-MM-DD value") from error
+        if parsed_date.isoformat() != date:
+            raise ValueError("date must use a valid YYYY-MM-DD value")
     return {
         "revision": revision, "title": title, "date": date,
         "station_id": station_id, "hour": hour, "minute": minute,
