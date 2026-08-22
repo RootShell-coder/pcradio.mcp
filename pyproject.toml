@@ -1,0 +1,17 @@
+[project]
+name = "pcradio-mcp"
+version = "0.1.0"
+description = "MCP server for the PCRadio HTTP API"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.26,<2",
+  "httpx>=0.28,<1",
+  "pydantic-settings>=2.10,<3",
+]
+
+[project.scripts]
+pcradio-mcp = "pcradio_mcp.server:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
