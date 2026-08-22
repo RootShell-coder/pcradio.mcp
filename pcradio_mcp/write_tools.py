@@ -93,6 +93,13 @@ def register_write_tools(mcp: FastMCP, client: PCRadioClient) -> None:
         alarm["id"] = alarm_id
         return await client.save_alarm(alarm, update=True)
 
+    @mcp.tool()
+    async def delete_pcradio_alarm(alarm_id: str, revision: int) -> dict:
+        """Delete an alarm using its ID and current optimistic-lock revision."""
+        if not 0 <= revision <= 2**63 - 1:
+            raise ValueError("revision must be between 0 and 9223372036854775807")
+        return await client.delete_alarm(alarm_id, revision)
+
 
 def _alarm_payload(
     revision: int, title: str, date: str, station_id: str, hour: int,

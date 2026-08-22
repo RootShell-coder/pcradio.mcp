@@ -47,10 +47,21 @@ async def test_registered_write_tools_delegate_every_operation():
             "station_id": "s1", "hour": 1, "minute": 2, "weekdays": 3,
             "fade_seconds": 4, "target_volume": 5, "enabled": True,
         }),
+        ("delete_pcradio_alarm", {"alarm_id": "a1", "revision": 2}),
     ]
     for name, arguments in calls:
         assert await mcp.call_tool(name, arguments)
     assert len(client.calls) == len(calls)
+    assert client.calls[-1] == ("delete_alarm", ("a1", 2), {})
+
+
+@pytest.mark.asyncio
+async def test_delete_alarm_rejects_invalid_revision():
+    mcp, _ = await registered()
+    with pytest.raises(ToolError, match="revision must be between"):
+        await mcp.call_tool(
+            "delete_pcradio_alarm", {"alarm_id": "a1", "revision": -1},
+        )
 
 
 @pytest.mark.asyncio

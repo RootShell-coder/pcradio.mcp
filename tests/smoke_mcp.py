@@ -15,6 +15,7 @@ async def main() -> None:
     expected = {
         "add_pcradio_user_station",
         "create_pcradio_alarm",
+        "delete_pcradio_alarm",
         "get_pcradio_playlist",
         "get_pcradio_state",
         "get_pcradio_user_playlist",

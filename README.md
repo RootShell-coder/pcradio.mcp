@@ -18,8 +18,8 @@ This server is built specifically for the
 - Return structured device error details, including HTTP status, error code,
   message, and additional context.
 
-Delete operations, OTA, shutdown/standby, and the IR service are intentionally
-not exposed as MCP tools.
+Deleting user stations, OTA, shutdown/standby, and the IR service are
+intentionally not exposed as MCP tools.
 
 ## Run with Docker Compose
 
