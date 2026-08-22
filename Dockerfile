@@ -8,6 +8,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir --upgrade "setuptools>=78.1.1" \
     && python -m pip install --no-cache-dir -r requirements.txt \
+    && rm -f /usr/local/lib/python3.13/ensurepip/_bundled/setuptools-*.whl \
     && adduser -D -u 10001 appuser
 
 COPY pcradio_mcp ./pcradio_mcp
