@@ -10,6 +10,7 @@ services:
       PCRADIO_TIMEOUT: ${PCRADIO_TIMEOUT:-5}
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8080
+      MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN:-}
     ports:
       - "8081:8080"
     restart: unless-stopped

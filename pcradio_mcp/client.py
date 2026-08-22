@@ -6,6 +6,30 @@ import httpx
 from .normalize import normalize_playlist, normalize_state, normalize_user_playlist
 
 
+class PCRadioAPIError(RuntimeError):
+    """A device API error that keeps its HTTP status and safe response details."""
+
+    def __init__(
+        self, method: str, path: str, status_code: int, reason: str,
+        *, code: str | None = None, message: str | None = None,
+        details: Any = None,
+    ) -> None:
+        self.method = method
+        self.path = path
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.details = details
+        parts = [f"PCRadio API {method} {path} failed: HTTP {status_code} {reason}"]
+        if code:
+            parts.append(f"code={code}")
+        if message:
+            parts.append(f"message={message}")
+        if details not in (None, "", {}, []):
+            parts.append(f"details={details}")
+        super().__init__("; ".join(parts))
+
+
 class PCRadioClient:
     def __init__(self, base_url: str, timeout: float = 5.0):
         self.base_url = base_url.rstrip("/")
@@ -23,7 +47,29 @@ class PCRadioClient:
                 content=content,
                 headers={"Content-Type": "text/plain"} if content is not None else None,
             )
-        response.raise_for_status()
+        if response.is_error:
+            code = message = None
+            details: Any = None
+            try:
+                error = response.json()
+            except ValueError:
+                error = None
+            if isinstance(error, dict):
+                code_value = error.get("code") or error.get("error")
+                message_value = error.get("message") or error.get("detail")
+                code = str(code_value) if code_value is not None else None
+                message = str(message_value) if message_value is not None else None
+                details = {
+                    key: value for key, value in error.items()
+                    if key not in {"code", "error", "message", "detail"}
+                }
+            else:
+                text = response.text.strip()
+                message = text[:1000] if text else None
+            raise PCRadioAPIError(
+                method, path, response.status_code, response.reason_phrase,
+                code=code, message=message, details=details,
+            )
         if not response.content:
             return {"ok": True}
         payload = response.json()
@@ -49,6 +95,9 @@ class PCRadioClient:
         return normalize_user_playlist(
             await self._request("GET", "/api/user-playlist")
         )
+
+    async def alarms(self) -> dict[str, Any]:
+        return await self._request("GET", "/api/alarms?page=1&page_size=100")
 
     async def play(self, channel: int) -> dict[str, Any]:
         if channel < 1:
@@ -77,8 +126,8 @@ class PCRadioClient:
         return await self._request("POST", "/api/player/step", json=body)
 
     async def set_eq(self, preset: int) -> dict[str, Any]:
-        if preset < 0:
-            raise ValueError("preset must be non-negative")
+        if not 0 <= preset <= 9:
+            raise ValueError("preset must be between 0 and 9")
         return await self._request("POST", "/api/eq", content=str(preset))
 
     async def set_effect(self, effect: str, enabled: bool) -> dict[str, Any]:
@@ -144,3 +193,9 @@ class PCRadioClient:
 
     async def save_alarm(self, alarm: dict[str, Any], *, update: bool) -> dict[str, Any]:
         return await self._request("PUT" if update else "POST", "/api/alarms", json=alarm)
+
+    async def create_alarm(self, alarm: dict[str, Any]) -> dict[str, Any]:
+        alarm = {**alarm, "revision": (await self.alarms()).get("revision")}
+        if not isinstance(alarm["revision"], int):
+            raise ValueError("PCRadio alarm list did not return an integer revision")
+        return await self.save_alarm(alarm, update=False)

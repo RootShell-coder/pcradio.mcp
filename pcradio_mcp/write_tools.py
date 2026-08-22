@@ -7,9 +7,15 @@ from .client import PCRadioClient
 
 def register_write_tools(mcp: FastMCP, client: PCRadioClient) -> None:
     @mcp.tool()
-    async def select_pcradio_channel(delta: int, channel: int | None = None) -> dict:
-        """Move by delta, or select an explicit one-based main-playlist channel."""
-        return await client.step(delta, channel)
+    async def select_pcradio_channel(
+        delta: int | None = None, channel: int | None = None,
+    ) -> dict:
+        """Move by a non-zero delta, or select one explicit one-based channel."""
+        if (delta is None) == (channel is None):
+            raise ValueError("provide exactly one of delta or channel")
+        if delta is not None:
+            return await client.step(delta)
+        return await client.step(1, channel)
 
     @mcp.tool()
     async def set_pcradio_eq(preset: int) -> dict:
@@ -64,14 +70,13 @@ def register_write_tools(mcp: FastMCP, client: PCRadioClient) -> None:
     async def create_pcradio_alarm(
         title: str, date: str, station_id: str, hour: int, minute: int,
         weekdays: int, fade_seconds: int, target_volume: int, enabled: bool,
-        revision: int = 0,
     ) -> dict:
-        """Create an alarm. Weekdays is a 0..127 bitmask; date may be empty."""
+        """Create an alarm using the device's current revision. Date may be empty."""
         alarm = _alarm_payload(
-            revision, title, date, station_id, hour, minute, weekdays,
+            0, title, date, station_id, hour, minute, weekdays,
             fade_seconds, target_volume, enabled,
         )
-        return await client.save_alarm(alarm, update=False)
+        return await client.create_alarm(alarm)
 
     @mcp.tool()
     async def update_pcradio_alarm(

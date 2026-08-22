@@ -1,5 +1,7 @@
+import uvicorn
 from mcp.server.fastmcp import FastMCP
 
+from .auth import BearerTokenMiddleware
 from .client import PCRadioClient
 from .config import Settings
 from .write_tools import register_write_tools
@@ -65,8 +67,16 @@ def main() -> None:
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.run(transport="streamable-http")
+    app = mcp.streamable_http_app()
+    if settings.mcp_bearer_token is not None:
+        app = BearerTokenMiddleware(
+            app, settings.mcp_bearer_token.get_secret_value(),
+        )
+    config = uvicorn.Config(
+        app, host=settings.mcp_host, port=settings.mcp_port, log_level="info",
+    )
+    uvicorn.Server(config).run()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - process entry point
     main()

@@ -1,19 +1,27 @@
 # pcradio-mcp
 
-MCP-сервер для управления интернет-радио PCRadio через HTTP API. Использует
-Streamable HTTP.
+An MCP server for reading and controlling a PCRadio internet radio through its
+HTTP API. It uses the MCP Streamable HTTP transport.
 
-## Возможности
+This server is built specifically for the
+[pcradio.esp32](https://github.com/RootShell-coder/pcradio.esp32) project.
 
-- чтение состояния устройства и плейлиста;
-- управление воспроизведением, каналом, громкостью и mute;
-- настройка EQ и звуковых эффектов;
-- управление пользовательскими станциями и будильниками;
-- установка NTP-серверов и timezone.
+## Features
 
-Операции удаления, OTA, standby и IR service не экспортируются.
+- Read device state, playback details, network information, alarms, and
+  playlists.
+- Control playback, channels, volume, and mute state.
+- Configure equalizer presets and audio effects.
+- Manage user stations and alarms.
+- Configure NTP servers, timezone, and Web UI preferences.
+- Optionally protect the MCP endpoint with a static Bearer token.
+- Return structured device error details, including HTTP status, error code,
+  message, and additional context.
 
-## Запуск
+Delete operations, OTA, shutdown/standby, and the IR service are intentionally
+not exposed as MCP tools.
+
+## Run with Docker Compose
 
 ```bash
 git clone https://github.com/RootShell-coder/pcradio.mcp.git
@@ -23,26 +31,50 @@ docker compose pull
 docker compose up -d
 ```
 
-MCP endpoint:
+The MCP endpoint is available at:
 
 ```text
 http://localhost:8081/mcp
 ```
 
-## Конфигурация
+## Configuration
 
-| Переменная         | Назначение                | По умолчанию           |
-| ------------------ | ------------------------- | ---------------------- |
-| `PCRADIO_BASE_URL` | URL HTTP API устройства   | `http://pcradio.local` |
-| `PCRADIO_TIMEOUT`  | Таймаут запросов, секунды | `5`                    |
-| `MCP_HOST`         | Адрес внутри контейнера   | `0.0.0.0`              |
-| `MCP_PORT`         | Порт внутри контейнера    | `8080`                 |
+| Variable           | Description                              | Default                        |
+| ------------------ | ---------------------------------------- | ------------------------------ |
+| `PCRADIO_BASE_URL` | PCRadio device HTTP API URL              | `http://pcradio.local`         |
+| `PCRADIO_TIMEOUT`  | Device request timeout in seconds        | `5`                            |
+| `MCP_HOST`         | Address listened on inside the container | `0.0.0.0`                      |
+| `MCP_PORT`         | Port listened on inside the container    | `8080`                         |
+| `MCP_BEARER_TOKEN` | Optional Bearer token required by `/mcp` | Empty; authentication disabled |
 
-Значения можно задать через переменные окружения или файл `.env`.
+Values can be supplied as environment variables or through a `.env` file.
 
-## Проверка
+### Bearer authentication
 
-Read-only smoke-тест не выполняет операции записи:
+When `MCP_BEARER_TOKEN` contains a non-empty value, clients must include it in
+every MCP HTTP request:
+
+```text
+Authorization: Bearer <token>
+```
+
+Remove the variable or set it to an empty value to disable authentication. In
+an MCP client configuration, `MCP_BEARER_TOKEN` can be used as the environment
+variable containing the Bearer token.
+
+## Tests
+
+Install the development dependencies and run the complete test suite:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The test configuration requires 100% statement and branch coverage for the
+`pcradio_mcp` package.
+
+The read-only container smoke test does not execute device write operations:
 
 ```bash
 docker compose run --rm --no-deps \

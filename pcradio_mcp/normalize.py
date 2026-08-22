@@ -32,6 +32,11 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
             ),
             "codec": audio.get("codec"),
             "bitrate_kbps": audio.get("bitrate_kbps"),
+            "eq_preset": audio.get("eq_preset"),
+            "eq_preset_name": audio.get("eq_preset_name"),
+            "loudness": audio.get("loudness"),
+            "fft_denoise": audio.get("fft_denoise"),
+            "stereo_wide": audio.get("stereo_wide"),
         },
         "network": {
             "wifi_rssi_dbm": network.get("wifi_rssi_dbm"),
@@ -46,12 +51,15 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
         "alarms": {
             "items": [
                 {key: alarm.get(key) for key in (
-                    "title", "date", "hour", "minute", "weekdays",
+                    "id", "title", "date", "station_id", "hour", "minute", "weekdays",
                     "fade_seconds", "target_volume", "enabled",
                 )}
                 for alarm in alarms if isinstance(alarm, dict)
             ],
             "total": alarm_page.get("total", len(alarms)),
+            "revision": alarm_page.get("revision"),
+            "page": alarm_page.get("page"),
+            "page_size": alarm_page.get("page_size"),
             "active": time_state.get("active_alarm"),
             "next": time_state.get("next_alarm"),
         },

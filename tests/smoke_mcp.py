@@ -1,11 +1,13 @@
 import asyncio
+import os
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 
 async def main() -> None:
-    async with streamable_http_client("http://pcradio-mcp:8080/mcp") as streams:
+    url = os.getenv("PCRADIO_MCP_URL", "http://pcradio-mcp:8080/mcp")
+    async with streamable_http_client(url) as streams:
         async with ClientSession(streams[0], streams[1]) as client:
             await client.initialize()
             result = await client.list_tools()

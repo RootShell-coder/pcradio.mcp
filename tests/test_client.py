@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from pcradio_mcp.client import PCRadioClient
+from pcradio_mcp.client import PCRadioAPIError, PCRadioClient
 
 
 @pytest.mark.asyncio
@@ -69,12 +69,14 @@ async def test_extended_write_commands_match_openapi(monkeypatch):
     monkeypatch.setattr(PCRadioClient, "_request", fake_request)
     client = PCRadioClient("http://radio")
     await client.step(-1)
+    await client.step(1, 63)
     await client.set_eq(2)
     await client.set_effect("loudness", True)
     await client.add_user_station("Jazz", "https://radio.example/stream")
     await client.set_time_config(["pool.ntp.org"], "Europe/Moscow")
     assert calls == [
         ("POST", "/api/player/step", {"delta": -1}, None),
+        ("POST", "/api/player/step", {"delta": 1, "channel": 63}, None),
         ("POST", "/api/eq", None, "2"),
         ("POST", "/api/loudness", None, "1"),
         ("POST", "/api/user-playlist", {
@@ -87,16 +89,193 @@ async def test_extended_write_commands_match_openapi(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_http_error_is_propagated(monkeypatch):
+async def test_http_error_includes_structured_device_details(monkeypatch):
     class FakeAsyncClient:
         async def __aenter__(self): return self
         async def __aexit__(self, *args): pass
         async def request(self, *args, **kwargs):
-            return httpx.Response(503, request=httpx.Request("GET", "http://radio/api"))
+            return httpx.Response(
+                409,
+                json={
+                    "error": "revision_conflict",
+                    "message": "Expected revision 8, received 0",
+                    "current_revision": 8,
+                },
+                request=httpx.Request("POST", "http://radio/api/alarms"),
+            )
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: FakeAsyncClient())
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(PCRadioAPIError) as caught:
         await PCRadioClient("http://radio").playlist()
+    error = caught.value
+    assert error.status_code == 409
+    assert error.code == "revision_conflict"
+    assert error.details == {"current_revision": 8}
+    assert "Expected revision 8, received 0" in str(error)
+    assert "HTTP 409 Conflict" in str(error)
+
+
+@pytest.mark.asyncio
+async def test_create_alarm_fetches_current_revision(monkeypatch):
+    calls = []
+
+    async def fake_request(self, method, path, *, json=None, content=None):
+        calls.append((method, path, json))
+        if method == "GET":
+            return {"alarms": [], "revision": 8}
+        return {"status": "success", "id": "alarm-1", "revision": 9}
+
+    monkeypatch.setattr(PCRadioClient, "_request", fake_request)
+    result = await PCRadioClient("http://radio").create_alarm({"title": "Test"})
+    assert result["revision"] == 9
+    assert calls == [
+        ("GET", "/api/alarms?page=1&page_size=100", None),
+        ("POST", "/api/alarms", {"title": "Test", "revision": 8}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_eq_rejects_unknown_preset():
+    with pytest.raises(ValueError, match="between 0 and 9"):
+        await PCRadioClient("http://radio").set_eq(10)
+
+
+@pytest.mark.asyncio
+async def test_all_remaining_successful_client_operations(monkeypatch):
+    calls = []
+
+    async def fake_request(self, method, path, *, json=None, content=None):
+        calls.append((method, path, json, content))
+        return {"revision": 3}
+
+    monkeypatch.setattr(PCRadioClient, "_request", fake_request)
+    client = PCRadioClient("http://radio/")
+    assert client.base_url == "http://radio"
+    await client.alarms()
+    await client.reload_playlist()
+    await client.play_user_station("station-1")
+    await client.update_station(
+        "station-1", name="New", favorite=True, play_count=7,
+    )
+    await client.set_ui_preferences(["time"])
+    await client.save_alarm({"id": "alarm-1"}, update=True)
+    assert calls == [
+        ("GET", "/api/alarms?page=1&page_size=100", None, None),
+        ("POST", "/api/playlist/reload", {}, None),
+        ("POST", "/api/user-playlist/play", {"id": "station-1"}, None),
+        ("POST", "/api/station/stats", {
+            "id": "station-1", "name": "New", "favorite": True,
+            "play_count": 7,
+        }, None),
+        ("POST", "/api/ui/preferences", {"collapsed_groups": ["time"]}, None),
+        ("PUT", "/api/alarms", {"id": "alarm-1"}, None),
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation, message", [
+    (lambda client: client.play(0), "at least 1"),
+    (lambda client: client.step(0), "not zero"),
+    (lambda client: client.step(1, 0), "channel must"),
+    (lambda client: client.set_effect("unknown", True), "unknown audio effect"),
+    (lambda client: client.add_user_station(" ", "https://x"), "name must"),
+    (lambda client: client.add_user_station("x", "ftp://x"), "url must"),
+    (lambda client: client.update_station(
+        "x", name=None, favorite=None, play_count=None,
+    ), "at least one"),
+    (lambda client: client.update_station(
+        "x", name=None, favorite=None, play_count=-1,
+    ), "uint32"),
+    (lambda client: client.set_ui_preferences(["invalid"]), "unknown UI"),
+    (lambda client: client.set_time_config([], "UTC"), "at least one"),
+    (lambda client: client.set_time_config(["pool.ntp.org"], " "), "timezone"),
+])
+async def test_client_validation_errors(operation, message):
+    with pytest.raises(ValueError, match=message):
+        await operation(PCRadioClient("http://radio"))
+
+
+@pytest.mark.asyncio
+async def test_create_alarm_requires_revision(monkeypatch):
+    async def fake_request(self, method, path, *, json=None, content=None):
+        return {"alarms": []}
+
+    monkeypatch.setattr(PCRadioClient, "_request", fake_request)
+    with pytest.raises(ValueError, match="integer revision"):
+        await PCRadioClient("http://radio").create_alarm({})
+
+
+class ResponseClient:
+    response = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+    async def request(self, *args, **kwargs):
+        return self.response
+
+
+@pytest.mark.asyncio
+async def test_empty_success_response(monkeypatch):
+    ResponseClient.response = httpx.Response(
+        204, request=httpx.Request("POST", "http://radio/api"),
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: ResponseClient())
+    assert await PCRadioClient("http://radio").stop() == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_object_success_response(monkeypatch):
+    ResponseClient.response = httpx.Response(
+        200, json={"status": "success"},
+        request=httpx.Request("POST", "http://radio/api"),
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: ResponseClient())
+    assert await PCRadioClient("http://radio").stop() == {"status": "success"}
+
+
+@pytest.mark.asyncio
+async def test_non_object_success_response_is_rejected(monkeypatch):
+    ResponseClient.response = httpx.Response(
+        200, json=[], request=httpx.Request("GET", "http://radio/api"),
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: ResponseClient())
+    with pytest.raises(ValueError, match="non-object"):
+        await PCRadioClient("http://radio").playlist()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body, expected", [
+    ("device is busy", "device is busy"),
+    ("", None),
+])
+async def test_plain_text_http_error(monkeypatch, body, expected):
+    ResponseClient.response = httpx.Response(
+        503, text=body, request=httpx.Request("GET", "http://radio/api"),
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: ResponseClient())
+    with pytest.raises(PCRadioAPIError) as caught:
+        await PCRadioClient("http://radio").playlist()
+    assert caught.value.message == expected
+
+
+@pytest.mark.asyncio
+async def test_empty_structured_http_error(monkeypatch):
+    ResponseClient.response = httpx.Response(
+        409, json={}, request=httpx.Request("GET", "http://radio/api"),
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: ResponseClient())
+    with pytest.raises(PCRadioAPIError) as caught:
+        await PCRadioClient("http://radio").playlist()
+    assert caught.value.code is None
+    assert caught.value.message is None
+    assert caught.value.details == {}
+    assert str(caught.value) == (
+        "PCRadio API GET /api/playlist failed: HTTP 409 Conflict"
+    )
 
 @pytest.mark.asyncio
 async def test_user_playlist_is_normalized_without_stream_urls(monkeypatch):
