@@ -124,6 +124,12 @@ async def main() -> None:
                     "hour": 10, "minute": 1, "weekdays": 0,
                     "fade_seconds": 0, "target_volume": 10, "enabled": False,
                 })
+                alarms = await device.alarms()
+                await call("delete_pcradio_alarm", {
+                    "alarm_id": temporary_alarm_id,
+                    "revision": alarms["revision"],
+                })
+                temporary_alarm_id = None
                 await call("stop_pcradio")
                 await asyncio.sleep(2)
                 await call("reload_pcradio_playlist")

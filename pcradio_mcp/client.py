@@ -90,7 +90,8 @@ class PCRadioClient:
         return normalize_state(dict(zip(paths, values, strict=True)))
 
     async def playlist(
-        self, query: str | None = None, offset: int = 0, limit: int = 100,
+        self, query: str | None = None, station_id: str | None = None,
+        offset: int = 0, limit: int = 100,
     ) -> dict[str, Any]:
         if offset < 0:
             raise ValueError("offset must be non-negative")
@@ -98,6 +99,8 @@ class PCRadioClient:
             raise ValueError("limit must be between 1 and 500")
         result = normalize_playlist(await self._request("GET", "/api/playlist"))
         stations = result["stations"]
+        if station_id is not None:
+            stations = [station for station in stations if station.get("id") == station_id]
         if query is not None and query.strip():
             needle = query.strip().casefold()
             stations = [

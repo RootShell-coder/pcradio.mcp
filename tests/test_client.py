@@ -141,6 +141,24 @@ async def test_eq_rejects_unknown_preset():
 
 
 @pytest.mark.asyncio
+async def test_playlist_can_find_one_station_by_exact_id(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return {"stations": [
+            {"id": "first", "number": 1, "name": "First"},
+            {"id": "wanted", "number": 4163, "name": "Romantika"},
+        ]}
+
+    monkeypatch.setattr(PCRadioClient, "_request", fake_request)
+    result = await PCRadioClient("http://radio").playlist(station_id="wanted", limit=1)
+
+    assert result["total"] == 1
+    assert result["stations"] == [{
+        "id": "wanted", "number": 4163, "name": "Romantika",
+        "favorite": None, "available": None,
+    }]
+
+
+@pytest.mark.asyncio
 async def test_all_remaining_successful_client_operations(monkeypatch):
     calls = []
 
