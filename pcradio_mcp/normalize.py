@@ -10,6 +10,7 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
     identity = state.get("identity", {})
     alarm_page = state.get("alarms", {})
     alarms = alarm_page.get("alarms", [])
+    icy = player.get("icy") if isinstance(player.get("icy"), dict) else None
     return {
         "identity": {
             "device_id": identity.get("device_id"),
@@ -22,6 +23,7 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
             and player.get("playback_enabled") is True,
             "configured_station_name": player.get("station_name"),
             "station_id": player.get("station_id"),
+            "icy": icy,
             "firmware_version": player.get("firmware_version"),
         },
         "audio": {
