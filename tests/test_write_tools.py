@@ -58,7 +58,7 @@ async def test_registered_write_tools_delegate_every_operation():
 @pytest.mark.asyncio
 async def test_delete_alarm_rejects_invalid_revision():
     mcp, _ = await registered()
-    with pytest.raises(ToolError, match="revision must be between"):
+    with pytest.raises(ToolError, match="greater than or equal to 0"):
         await mcp.call_tool(
             "delete_pcradio_alarm", {"alarm_id": "a1", "revision": -1},
         )

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">PCRadio control architecture through MCP</title>
+  <desc id="desc">A user request passes through a language model and the MCP server to the PCRadio HTTP API.</desc>
+  <rect width="1600" height="900" fill="#f7f8fa"/>
+  <text x="120" y="130" fill="#171a1f" font-family="Arial, sans-serif" font-size="54" font-weight="700">MCP as an experimental layer</text>
+  <text x="120" y="190" fill="#56606c" font-family="Arial, sans-serif" font-size="28">PCRadio works independently; MCP connects a language model to its API</text>
+  <g font-family="Arial, sans-serif">
+    <rect x="120" y="330" width="270" height="220" rx="8" fill="#ffffff" stroke="#b8c0ca" stroke-width="3"/>
+    <circle cx="255" cy="400" r="42" fill="#2676ad"/>
+    <circle cx="255" cy="382" r="15" fill="#ffffff"/>
+    <path d="M210 466c12-46 78-46 90 0" fill="none" stroke="#2676ad" stroke-width="22" stroke-linecap="round"/>
+    <text x="255" y="510" text-anchor="middle" fill="#171a1f" font-size="30" font-weight="700">User</text>
+
+    <rect x="475" y="330" width="270" height="220" rx="8" fill="#ffffff" stroke="#b8c0ca" stroke-width="3"/>
+    <path d="M555 395h110v78H555z" fill="none" stroke="#7756a8" stroke-width="10"/>
+    <path d="M575 375v20m70-20v20m-70 78v20m70-20v20" stroke="#7756a8" stroke-width="8"/>
+    <text x="610" y="510" text-anchor="middle" fill="#171a1f" font-size="30" font-weight="700">Language model</text>
+
+    <rect x="830" y="330" width="270" height="220" rx="8" fill="#ffffff" stroke="#b8c0ca" stroke-width="3"/>
+    <path d="M905 392h120v82H905z" fill="none" stroke="#dc7b20" stroke-width="10"/>
+    <path d="M925 418h80m-80 26h54" stroke="#dc7b20" stroke-width="8" stroke-linecap="round"/>
+    <text x="965" y="510" text-anchor="middle" fill="#171a1f" font-size="30" font-weight="700">MCP server</text>
+
+    <rect x="1185" y="330" width="270" height="220" rx="8" fill="#ffffff" stroke="#b8c0ca" stroke-width="3"/>
+    <circle cx="1320" cy="416" r="58" fill="none" stroke="#31805a" stroke-width="10"/>
+    <circle cx="1320" cy="416" r="19" fill="#31805a"/>
+    <path d="M1278 458l-28 30m112-30 28 30" stroke="#31805a" stroke-width="10" stroke-linecap="round"/>
+    <text x="1320" y="510" text-anchor="middle" fill="#171a1f" font-size="30" font-weight="700">PCRadio</text>
+
+    <g fill="none" stroke="#697480" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M405 440h52"/><path d="M443 425l16 15-16 15"/>
+      <path d="M760 440h52"/><path d="M798 425l16 15-16 15"/>
+      <path d="M1115 440h52"/><path d="M1153 425l16 15-16 15"/>
+    </g>
+    <text x="787" y="295" text-anchor="middle" fill="#56606c" font-size="25">tool selection</text>
+    <text x="1142" y="295" text-anchor="middle" fill="#56606c" font-size="25">HTTP API</text>
+
+    <rect x="120" y="680" width="1335" height="92" rx="8" fill="#e9eef3"/>
+    <text x="787" y="738" text-anchor="middle" fill="#303842" font-size="30">MCP does not play radio; it exposes a controlled set of commands to the model</text>
+  </g>
+</svg>
