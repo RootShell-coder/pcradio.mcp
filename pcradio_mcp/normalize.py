@@ -81,6 +81,7 @@ def normalize_playlist(payload: dict[str, Any]) -> dict[str, Any]:
             "number": item.get("number"),
             "name": item.get("name"),
             "favorite": item.get("favorite"),
+            "play_count": item.get("play_count"),
             "available": item.get("availability_confirmed"),
         }
         for item in stations if isinstance(item, dict)

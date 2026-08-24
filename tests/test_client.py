@@ -154,7 +154,7 @@ async def test_playlist_can_find_one_station_by_exact_id(monkeypatch):
     assert result["total"] == 1
     assert result["stations"] == [{
         "id": "wanted", "number": 4163, "name": "Romantika",
-        "favorite": None, "available": None,
+        "favorite": None, "play_count": None, "available": None,
     }]
 
 
@@ -235,8 +235,8 @@ async def test_playlist_search_and_pagination(monkeypatch):
     result = await client.playlist(query=" relax ", offset=0, limit=1)
     assert result == {
         "stations": [{
-            "id": "1", "number": None, "name": "Relax FM",
-            "favorite": None, "available": None,
+                "id": "1", "number": None, "name": "Relax FM",
+                "favorite": None, "play_count": None, "available": None,
         }],
         "total": 1, "offset": 0, "limit": 1,
     }
@@ -369,3 +369,35 @@ async def test_user_playlist_is_normalized_without_stream_urls(monkeypatch):
         "main_channel": None,
         "play_count": 3,
     }]
+
+
+@pytest.mark.asyncio
+async def test_top_stations_matches_webui_ranking(monkeypatch):
+    client = PCRadioClient("http://radio")
+
+    async def playlist(*, limit):
+        assert limit == 500
+        return {"stations": [
+            {"id": "main-1", "number": 1, "name": "Main", "play_count": 5},
+            {"id": "duplicate", "number": 2, "name": "Main copy", "play_count": 2},
+            {"id": "zero", "number": 3, "name": "Zero", "play_count": 0},
+        ]}
+
+    async def user_playlist():
+        return {"stations": [
+            {"id": "user-1", "number": 1, "name": "User", "play_count": 9},
+            {"id": "duplicate", "number": 2, "name": "Duplicate", "play_count": 20},
+        ]}
+
+    monkeypatch.setattr(client, "playlist", playlist)
+    monkeypatch.setattr(client, "user_playlist", user_playlist)
+
+    result = await client.top_stations(2)
+
+    assert [(item["id"], item["source"]) for item in result["stations"]] == [
+        ("user-1", "user"), ("main-1", "main"),
+    ]
+    assert result == {"stations": result["stations"], "total": 2, "limit": 2}
+
+    with pytest.raises(ValueError, match="between 1 and 100"):
+        await client.top_stations(0)

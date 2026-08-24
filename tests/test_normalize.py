@@ -47,10 +47,12 @@ def test_state_preserves_controllable_audio_and_alarm_fields():
 def test_playlist_normalization_ignores_invalid_items():
     result = normalize_playlist({"stations": [None, {
         "id": "s1", "number": 1, "name": "Radio", "favorite": False,
+        "play_count": 42,
         "availability_confirmed": True,
     }]})
     assert result == {"stations": [{
         "id": "s1", "number": 1, "name": "Radio", "favorite": False,
+        "play_count": 42,
         "available": True,
     }], "total": 1}
 

@@ -120,6 +120,24 @@ class PCRadioClient:
             await self._request("GET", "/api/user-playlist")
         )
 
+    async def top_stations(self, limit: int = 30) -> dict[str, Any]:
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be between 1 and 100")
+        main = (await self.playlist(limit=500))["stations"]
+        user = (await self.user_playlist())["stations"]
+        stations = [{**item, "source": "main"} for item in main]
+        ids = {item.get("id") for item in stations}
+        stations.extend(
+            {**item, "source": "user"}
+            for item in user
+            if item.get("id") not in ids
+        )
+        ranked = sorted(
+            (item for item in stations if (item.get("play_count") or 0) > 0),
+            key=lambda item: (-(item.get("play_count") or 0), item.get("number") or 0),
+        )[:limit]
+        return {"stations": ranked, "total": len(ranked), "limit": limit}
+
     async def alarms(self) -> dict[str, Any]:
         return await self._request("GET", "/api/alarms?page=1&page_size=100")
 

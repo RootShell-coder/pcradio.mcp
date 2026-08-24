@@ -17,7 +17,7 @@ def test_server_instructions_explain_cross_tool_workflows_and_boundaries():
 
 def test_every_tool_has_a_substantive_description():
     tools = tools_by_name()
-    assert len(tools) == 19
+    assert len(tools) == 20
     assert all(tool.description and len(tool.description) >= 35 for tool in tools.values())
 
 

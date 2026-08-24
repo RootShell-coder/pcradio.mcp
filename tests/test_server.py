@@ -21,6 +21,7 @@ async def test_read_and_basic_write_tools_delegate(monkeypatch):
         ("get_pcradio_state", {}),
         ("get_pcradio_playlist", {}),
         ("get_pcradio_user_playlist", {}),
+        ("get_pcradio_top_stations", {}),
         ("play_pcradio", {"channel": 2}),
         ("stop_pcradio", {}),
         ("set_pcradio_volume", {"volume_percent": 20}),
@@ -29,7 +30,7 @@ async def test_read_and_basic_write_tools_delegate(monkeypatch):
     for name, arguments in calls:
         assert await server.mcp.call_tool(name, arguments)
     assert [item[0] for item in client.calls] == [
-        "state", "playlist", "user_playlist", "play", "stop",
+        "state", "playlist", "user_playlist", "top_stations", "play", "stop",
         "set_volume", "set_mute",
     ]
 

@@ -60,9 +60,9 @@ async def get_pcradio_playlist(
     """Search or page the main playlist.
 
     Each station includes an opaque ID, a one-based `number` used by
-    play_pcradio, name, favorite flag, and observed availability. The returned
-    total is the filtered count before pagination. If both filters are supplied,
-    both must match.
+    play_pcradio, name, favorite flag, local play_count rating, and observed
+    availability. The returned total is the filtered count before pagination.
+    If both filters are supplied, both must match.
     """
     return await client.playlist(
         query=query, station_id=station_id, offset=offset, limit=limit,
@@ -78,6 +78,18 @@ async def get_pcradio_user_playlist() -> dict:
     is not the user display number.
     """
     return await client.user_playlist()
+
+
+@mcp.tool()
+async def get_pcradio_top_stations(
+    limit: Annotated[int, Field(ge=1, le=100, description="Maximum ranked stations to return.")] = 30,
+) -> dict:
+    """Return the local station ranking used by the PCRadio WebUI Top 30 view.
+
+    Combines main and user playlists, removes duplicate station IDs and stations
+    with zero plays, then sorts by descending play_count and channel number.
+    """
+    return await client.top_stations(limit)
 
 
 @mcp.tool()
