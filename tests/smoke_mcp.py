@@ -18,6 +18,7 @@ async def main() -> None:
         "delete_pcradio_alarm",
         "get_pcradio_playlist",
         "get_pcradio_state",
+        "get_pcradio_top_stations",
         "get_pcradio_user_playlist",
         "play_pcradio",
         "play_pcradio_user_station",
